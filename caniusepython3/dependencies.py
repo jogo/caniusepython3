@@ -38,9 +38,9 @@ class Project(object):
     def __str__(self):
         cause  = ""
         if self.cause == pypi.UPGRADE_FOR_PY3:
-            cause = "[Upgrade]"
+            cause = "[upgrade]"
         if self.cause == pypi.NO_PY3_SUPPORT:
-            cause = "[No py3 support]"
+            cause = "[no py3 support]"
         if self.cause == pypi.INTERNAL_UNKNOWN:
             cause = "[internal dependency]"
         return cause + " " + self.name

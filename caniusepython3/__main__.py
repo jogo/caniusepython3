@@ -82,7 +82,7 @@ def message(blockers):
             flattened_blockers.add(blocker)
     need = 'You need {0} project{1} to transition to Python 3.'
     formatted_need = need.format(len(flattened_blockers),
-                      's' if len(flattened_blockers) != 1 else '')
+                                 's' if len(flattened_blockers) != 1 else '')
     can_port = ('Of {0} {1} project{2}, {3} {4} no direct dependencies '
                 'blocking {5} transition:')
     formatted_can_port = can_port.format(
@@ -105,7 +105,7 @@ def pprint_blockers(blockers):
 
     """
     pprinted = []
-    for blocker in sorted(blockers, key=lambda x: tuple(reversed(x))):
+    for blocker in sorted(blockers, key=lambda x: str(x[0])):
         buf = [blocker[0]]
         if len(blocker) > 1:
             buf.append(' (which is blocking ')
@@ -136,8 +136,8 @@ def check(projects):
 def main(args=sys.argv[1:]):
     passed = check(projects_from_cli(args))
     if not passed:
-      sys.exit(3)
+        sys.exit(3)
 
 
-if __name__ == '__main__':  #pragma: no cover
+if __name__ == '__main__':   # pragma: no cover
     main()
