@@ -28,6 +28,30 @@ class CircularDependencyError(Exception):
     """Raised if there are circular dependencies detected."""
 
 
+class Project(object):
+
+    def __init__(self, name, cause):
+        super(Project, self).__init__()
+        self.name = name
+        self.cause = cause
+
+    def __str__(self):
+        cause  = ""
+        if self.cause == pypi.UPGRADE_FOR_PY3:
+            cause = "[Upgrade]"
+        if self.cause == pypi.NO_PY3_SUPPORT:
+            cause = "[No py3 support]"
+        if self.cause == pypi.INTERNAL_UNKNOWN:
+            cause = "[internal dependency]"
+        return cause + " " + self.name
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
+
 def reasons_to_paths(reasons):
     """Calculate the dependency paths to the reasons of the blockers.
 
@@ -55,7 +79,7 @@ def dependencies(project_name):
     """Get the dependencies for a project."""
     log = logging.getLogger('ciu')
     log.info('Locating dependencies for {}'.format(project_name))
-    located = distlib.locators.locate(project_name, prereleases=True)
+    located = distlib.locators.locate(project_name.name, prereleases=True)
     if not located:
         log.warning('{0} not found'.format(project_name))
         return None
@@ -67,19 +91,20 @@ def blockers(project_names):
     log = logging.getLogger('ciu')
     overrides = pypi.manual_overrides()
 
-    def supports_py3(project_name):
+    def supports_py3(project_name, version=None):
         if project_name in overrides:
             return True
         else:
-            return pypi.supports_py3(project_name)
+            return pypi.supports_py3(project_name, version)
 
     check = []
     evaluated = set(overrides)
-    for project in project_names:
+    for project, version in project_names:
         log.info('Checking top-level project: {0} ...'.format(project))
         evaluated.add(project)
-        if not supports_py3(project):
-            check.append(project)
+        has_support = supports_py3(project, version)
+        if has_support != pypi.SUPPORTS_PY3:
+            check.append(Project(project, has_support))
     reasons = {project: None for project in check}
     thread_pool_executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=ciu.CPU_COUNT)
@@ -91,7 +116,7 @@ def blockers(project_names):
                     # Can't find any results for a project, so ignore it so as
                     # to not accidentally consider indefinitely that a project
                     # can't port.
-                    del reasons[parent]
+                    # del reasons[parent]
                     continue
                 log.info('Dependencies of {0}: {1}'.format(project, deps))
                 unchecked_deps = []
@@ -104,9 +129,9 @@ def blockers(project_names):
                                   executor.map(supports_py3,
                                                unchecked_deps))
                 for dep, ported in deps_status:
-                    if not ported:
+                    if ported != pypi.SUPPORTS_PY3:
                         reasons[dep] = parent
-                        new_check.append(dep)
+                        new_check.append(Project(dep, ported))
                     # Make sure there's no data race in recording a dependency
                     # has been evaluated but not reported somewhere.
                     evaluated.add(dep)

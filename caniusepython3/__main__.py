@@ -18,7 +18,6 @@ from __future__ import unicode_literals
 from caniusepython3 import dependencies
 from caniusepython3 import projects as projects_
 
-import distlib.metadata
 import packaging.utils
 
 import argparse
@@ -112,7 +111,7 @@ def pprint_blockers(blockers):
             buf.append(' (which is blocking ')
             buf.append(', which is blocking '.join(blocker[1:]))
             buf.append(')')
-        pprinted.append(''.join(buf))
+        pprinted.append(''.join(map(str, buf)))
     return pprinted
 
 

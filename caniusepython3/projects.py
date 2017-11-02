@@ -11,6 +11,11 @@ import io
 import logging
 import re
 
+def get_pinned_version(req):
+    for specifier in req.specifier:
+        if specifier.operator == u'==':
+            return specifier.version
+    return None
 
 def projects_from_requirements(requirements):
     """Extract the project dependencies from a Requirements specification."""
@@ -39,8 +44,12 @@ def projects_from_requirements(requirements):
                 log.warning(
                     'Skipping {0}: URL-specified projects unsupported'.format(req.name))
             else:
-                valid_reqs.append(req.name)
-    return frozenset(map(packaging.utils.canonicalize_name, valid_reqs))
+                pinned_version = get_pinned_version(req)
+                valid_reqs.append((req.name, pinned_version))
+    results = set()
+    for req, pinned_version in valid_reqs:
+        results.add((packaging.utils.canonicalize_name(req), pinned_version))
+    return frozenset(results)
 
 
 def projects_from_metadata(metadata):

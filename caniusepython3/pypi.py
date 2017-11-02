@@ -39,6 +39,11 @@ except NotImplementedError:  #pragma: no cover
 
 PROJECT_NAME = re.compile(r'[\w.-]+')
 
+SUPPORTS_PY3 = 1
+UPGRADE_FOR_PY3 = 2
+NO_PY3_SUPPORT = 3
+INTERNAL_UNKNOWN = 4
+
 
 def just_name(supposed_name):
     """Strip off any versioning or restrictions metadata from a project name."""
@@ -75,16 +80,50 @@ def _manual_overrides(_cache_date=None):
     return frozenset(map(packaging.utils.canonicalize_name, overrides.keys()))
 
 
-def supports_py3(project_name):
-    """Check with PyPI if a project supports Python 3."""
+class UnknownProjectException(Exception):
+    pass
+
+def _supports_py3(project_name, version=None):
     log = logging.getLogger("ciu")
-    log.info("Checking {} ...".format(project_name))
-    request = requests.get("https://pypi.org/pypi/{}/json".format(project_name))
+    if version:
+        request = requests.get("https://pypi.org/pypi/{}/{}/json".format(project_name, version))
+    else:
+        request = requests.get("https://pypi.org/pypi/{}/json".format(project_name))
     if request.status_code >= 400:
         log = logging.getLogger("ciu")
-        log.warning("problem fetching {}, assuming ported ({})".format(
+        log.warning("problem fetching {}, assuming internal ({})".format(
                         project_name, request.status_code))
-        return True
+        raise UnknownProjectException()
     response = request.json()
     return any(c.startswith("Programming Language :: Python :: 3")
                for c in response["info"]["classifiers"])
+
+
+def supports_py3(project_name, version=None):
+    """Check with PyPI if a project supports Python 3."""
+    # TODO check current and latest version
+    # 4 Possible states to return
+    #   - currently supports python3
+    #   - Newer version supports python 3
+    #   - Doesn't support python3 at all
+    #   - Internal lib, unknown
+
+    log = logging.getLogger("ciu")
+    log.info("Checking {} ...".format(project_name))
+    try:
+        if version:
+            current = _supports_py3(project_name, version)
+            latest = _supports_py3(project_name, None)
+            if current is False and latest is True:
+                return UPGRADE_FOR_PY3
+            elif current is True:
+                return SUPPORTS_PY3
+            else:
+                return NO_PY3_SUPPORT
+        else:
+            if _supports_py3(project_name, version):
+                return SUPPORTS_PY3
+            else:
+                return NO_PY3_SUPPORT
+    except UnknownProjectException:
+        return INTERNAL_UNKNOWN
