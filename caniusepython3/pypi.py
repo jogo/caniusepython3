@@ -98,6 +98,7 @@ def check_local_version(project_name, version):
 
 def _supports_py3(project_name, version=None):
     log = logging.getLogger("ciu")
+    local_only = False
     if version:
         request = requests.get("https://pypi.org/pypi/{}/{}/json".format(project_name, version))
     else:
@@ -110,10 +111,15 @@ def _supports_py3(project_name, version=None):
             log.warning("problem fetching {}, assuming internal ({})".format(
                             project_name, request.status_code))
             raise UnknownProjectException()
+        else:
+            local_only = True
     else:
         classifiers = request.json()["info"]["classifiers"]
-    return any(c.startswith("Programming Language :: Python :: 3")
+    result = any(c.startswith("Programming Language :: Python :: 3")
                for c in classifiers)
+    if result is False and local_only:
+        raise UnknownProjectException()
+    return result
 
 
 def supports_py3(project_name, version=None):
