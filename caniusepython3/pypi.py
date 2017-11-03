@@ -15,6 +15,7 @@
 from __future__ import unicode_literals
 
 import packaging.utils
+from pkg_resources import get_distribution
 import requests
 
 import concurrent.futures
@@ -24,6 +25,7 @@ import logging
 import multiprocessing
 import pkgutil
 import re
+
 
 try:
     from functools import lru_cache
@@ -83,6 +85,17 @@ def _manual_overrides(_cache_date=None):
 class UnknownProjectException(Exception):
     pass
 
+
+def check_local_version(project_name, version):
+    try:
+        info = json.loads(get_distribution(project_name).get_metadata('metadata.json'))
+        if version and info['version'] == version:
+            return info['classifiers']
+        else:
+            return None
+    except Exception:
+        return None
+
 def _supports_py3(project_name, version=None):
     log = logging.getLogger("ciu")
     if version:
@@ -91,12 +104,16 @@ def _supports_py3(project_name, version=None):
         request = requests.get("https://pypi.org/pypi/{}/json".format(project_name))
     if request.status_code >= 400:
         log = logging.getLogger("ciu")
-        log.warning("problem fetching {}, assuming internal ({})".format(
-                        project_name, request.status_code))
-        raise UnknownProjectException()
-    response = request.json()
+        log.warning('checking local package metadata')
+        classifiers = check_local_version(project_name, version)
+        if not classifiers:
+            log.warning("problem fetching {}, assuming internal ({})".format(
+                            project_name, request.status_code))
+            raise UnknownProjectException()
+    else:
+        classifiers = request.json()["info"]["classifiers"]
     return any(c.startswith("Programming Language :: Python :: 3")
-               for c in response["info"]["classifiers"])
+               for c in classifiers)
 
 
 def supports_py3(project_name, version=None):
