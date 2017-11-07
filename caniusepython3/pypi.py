@@ -89,7 +89,7 @@ class UnknownProjectException(Exception):
 def check_local_version(project_name, version):
     try:
         info = json.loads(get_distribution(project_name).get_metadata('metadata.json'))
-        if version and info['version'] == version:
+        if version and info['version'] == version or not version:
             return info['classifiers']
         else:
             return None
