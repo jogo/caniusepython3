@@ -36,7 +36,7 @@ class Project(object):
         self.cause = cause
 
     def __str__(self):
-        cause  = ""
+        cause = ""
         if self.cause == pypi.UPGRADE_FOR_PY3:
             cause = "[upgrade]"
         if self.cause == pypi.NO_PY3_SUPPORT:
@@ -46,7 +46,10 @@ class Project(object):
         return cause + " " + self.name
 
     def __eq__(self, other):
-        return self.name == other.name
+        try:
+            return self.name == other.name
+        except Exception:
+            return self.name == other
 
     def __hash__(self):
         return hash(self.name)

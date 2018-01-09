@@ -109,7 +109,7 @@ def pprint_blockers(blockers):
         buf = [blocker[0]]
         if len(blocker) > 1:
             buf.append(' (which is blocking ')
-            buf.append(', which is blocking '.join(blocker[1:]))
+            buf.append(', which is blocking '.join(map(str, blocker[1:])))
             buf.append(')')
         pprinted.append(''.join(map(str, buf)))
     return pprinted
