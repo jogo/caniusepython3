@@ -102,7 +102,12 @@ def blockers(project_names):
 
     check = []
     evaluated = set(overrides)
-    for project, version in project_names:
+
+    for project in project_names:
+        if type(project) == tuple:
+            project, version = project
+        else:
+            version = None
         log.info('Checking top-level project: {0} ...'.format(project))
         evaluated.add(project)
         has_support = supports_py3(project, version)
