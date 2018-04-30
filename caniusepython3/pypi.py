@@ -88,13 +88,19 @@ class UnknownProjectException(Exception):
 
 def check_local_version(project_name, version):
     try:
-        info = json.loads(get_distribution(project_name).get_metadata('metadata.json'))
-        if version and info['version'] == version or not version:
-            return info['classifiers']
+        dist = get_distribution(project_name)
+        if version and dist.version == version or not version:
+            classifiers = []
+            for line in dist.get_metadata_lines('METADATA'):
+                split = line.split('Classifier: ')
+                if len(split) == 2:
+                    classifiers.append(split[1])
+            return classifiers
         else:
             return None
     except Exception:
         return None
+
 
 def _supports_py3(project_name, version=None):
     log = logging.getLogger("ciu")
